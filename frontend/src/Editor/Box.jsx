@@ -7,6 +7,7 @@ import { TextInput } from './Components/TextInput';
 import { NumberInput } from './Components/NumberInput';
 import { TextArea } from './Components/TextArea';
 import { Container } from './Components/Container';
+import { Tabs } from './Components/Tabs';
 import { RichTextEditor } from './Components/RichTextEditor';
 import { DropDown } from './Components/DropDown';
 import { Checkbox } from './Components/Checkbox';
@@ -20,9 +21,17 @@ import { QrScanner } from './Components/QrScanner/QrScanner';
 import { ToggleSwitch } from './Components/Toggle';
 import { RadioButton } from './Components/RadioButton';
 import { StarRating } from './Components/StarRating';
+import { Divider } from './Components/Divider';
+import { FilePicker } from './Components/FilePicker';
+import { PasswordInput } from './Components/PasswordInput';
+import { Calendar } from './Components/Calendar';
+import { IFrame } from './Components/IFrame';
+import { CodeEditor } from './Components/CodeEditor';
 import { renderTooltip } from '../_helpers/appUtils';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import '@/_styles/custom.scss';
+import { resolveProperties, resolveStyles } from './component-properties-resolution';
+import { validateWidget } from '@/_helpers/utils';
 
 const AllComponents = {
   Button,
@@ -33,6 +42,7 @@ const AllComponents = {
   Table,
   TextArea,
   Container,
+  Tabs,
   RichTextEditor,
   DropDown,
   Checkbox,
@@ -46,6 +56,12 @@ const AllComponents = {
   ToggleSwitch,
   RadioButton,
   StarRating,
+  Divider,
+  FilePicker,
+  PasswordInput,
+  Calendar,
+  IFrame,
+  CodeEditor,
 };
 
 export const Box = function Box({
@@ -66,6 +82,8 @@ export const Box = function Box({
   containerProps,
   darkMode,
   removeComponent,
+  canvasWidth,
+  mode,
 }) {
   const backgroundColor = yellow ? 'yellow' : '';
 
@@ -81,6 +99,21 @@ export const Box = function Box({
   }
 
   const ComponentToRender = AllComponents[component.component];
+  const resolvedProperties = resolveProperties(component, currentState);
+  const resolvedStyles = resolveStyles(component, currentState);
+  const exposedVariables = currentState?.components[component.name] ?? {};
+
+  const fireEvent = (eventName, options) => {
+    if (mode === 'edit' && eventName === 'onClick') {
+      onComponentClick(id, component);
+    }
+    onEvent(eventName, { ...options, component });
+  };
+  const validate = (value) =>
+    validateWidget({
+      ...{ widgetValue: value },
+      ...{ validationObject: component.definition.validation, currentState },
+    });
 
   return (
     <OverlayTrigger
@@ -106,6 +139,13 @@ export const Box = function Box({
             containerProps={containerProps}
             darkMode={darkMode}
             removeComponent={removeComponent}
+            canvasWidth={canvasWidth}
+            properties={resolvedProperties}
+            exposedVariables={exposedVariables}
+            styles={resolvedStyles}
+            setExposedVariable={(variable, value) => onComponentOptionChanged(component, variable, value)}
+            fireEvent={fireEvent}
+            validate={validate}
           ></ComponentToRender>
         ) : (
           <div className="m-1" style={{ height: '100%' }}>

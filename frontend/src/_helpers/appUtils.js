@@ -56,7 +56,7 @@ export function runTransformation(_ref, rawData, transformation, query) {
     result = evalFunction(data, moment, _, currentState.components, currentState.queries, currentState.globals);
   } catch (err) {
     console.log('Transformation failed for query: ', query.name, err);
-    toast.error(err.message, { hideProgressBar: true });
+    result = { message: err.stack.split('\n')[0], status: 'failed', data: data };
   }
 
   return result;
@@ -67,7 +67,7 @@ export async function executeActionsForEventId(_ref, eventId, component, mode) {
   const filteredEvents = events.filter((event) => event.eventId === eventId);
 
   for (const event of filteredEvents) {
-    await executeAction(_ref, event, mode);
+    await executeAction(_ref, event, mode); // skipcq: JS-0032
   }
 }
 
@@ -98,6 +98,11 @@ async function copyToClipboard(text) {
 }
 
 function showModal(_ref, modalId, show) {
+  if (_.isEmpty(modalId)) {
+    console.log('No modal is associated with this event.');
+    return Promise.resolve();
+  }
+
   const modalMeta = _ref.state.appDefinition.components[modalId];
 
   const newState = {
@@ -115,9 +120,7 @@ function showModal(_ref, modalId, show) {
 
   _ref.setState(newState);
 
-  return new Promise(function (resolve, reject) {
-    resolve();
-  });
+  return Promise.resolve();
 }
 
 function executeAction(_ref, event, mode) {
@@ -125,23 +128,19 @@ function executeAction(_ref, event, mode) {
     switch (event.actionId) {
       case 'show-alert': {
         const message = resolveReferences(event.message, _ref.state.currentState);
-        toast(message, { hideProgressBar: true });
-        return new Promise(function (resolve, reject) {
-          resolve();
-        });
+        toast(message, { hideProgressBar: true, type: event.alertType });
+        return Promise.resolve();
       }
 
       case 'run-query': {
         const { queryId, queryName } = event;
-        return runQuery(_ref, queryId, queryName);
+        return runQuery(_ref, queryId, queryName, true, mode);
       }
 
       case 'open-webpage': {
         const url = resolveReferences(event.url, _ref.state.currentState);
         window.open(url, '_blank');
-        return new Promise(function (resolve, reject) {
-          resolve();
-        });
+        return Promise.resolve();
       }
 
       case 'go-to-app': {
@@ -174,9 +173,7 @@ function executeAction(_ref, event, mode) {
             window.open(url, '_blank');
           }
         }
-        return new Promise(function (resolve, reject) {
-          resolve();
-        });
+        return Promise.resolve();
       }
 
       case 'show-modal':
@@ -189,9 +186,13 @@ function executeAction(_ref, event, mode) {
         const contentToCopy = resolveReferences(event.contentToCopy, _ref.state.currentState);
         copyToClipboard(contentToCopy);
 
-        return new Promise(function (resolve, reject) {
-          resolve();
-        });
+        return Promise.resolve();
+      }
+
+      case 'set-localstorage-value': {
+        const key = resolveReferences(event.key, _ref.state.currentState);
+        const value = resolveReferences(event.value, _ref.state.currentState);
+        localStorage.setItem(key, value);
       }
     }
   }
@@ -223,6 +224,48 @@ export async function onEvent(_ref, eventName, options, mode = 'edit') {
     );
   }
 
+  if (eventName === 'onCalendarEventSelect') {
+    const { component, calendarEvent } = options;
+    _self.setState(
+      {
+        currentState: {
+          ..._self.state.currentState,
+          components: {
+            ..._self.state.currentState.components,
+            [component.name]: {
+              ..._self.state.currentState.components[component.name],
+              selectedEvent: { ...calendarEvent },
+            },
+          },
+        },
+      },
+      () => {
+        executeActionsForEventId(_ref, 'onCalendarEventSelect', component, mode);
+      }
+    );
+  }
+
+  if (eventName === 'onCalendarSlotSelect') {
+    const { component, selectedSlots } = options;
+    _self.setState(
+      {
+        currentState: {
+          ..._self.state.currentState,
+          components: {
+            ..._self.state.currentState.components,
+            [component.name]: {
+              ..._self.state.currentState.components[component.name],
+              selectedSlots,
+            },
+          },
+        },
+      },
+      () => {
+        executeActionsForEventId(_ref, 'onCalendarSlotSelect', component, mode);
+      }
+    );
+  }
+
   if (eventName === 'onTableActionButtonClicked') {
     const { component, data, action, rowId } = options;
     _self.setState(
@@ -239,14 +282,45 @@ export async function onEvent(_ref, eventName, options, mode = 'edit') {
           },
         },
       },
-      () => {
-        if (action) {
-          action.events?.forEach((event) => {
+      async () => {
+        if (action && action.events) {
+          for (const event of action.events) {
             if (event.actionId) {
               // the event param uses a hacky workaround for using same format used by event manager ( multiple handlers )
-              executeAction(_self, { ...event, ...event.options }, mode);
+              await executeAction(_self, { ...event, ...event.options }, mode);
             }
-          });
+          }
+        } else {
+          console.log('No action is associated with this event');
+        }
+      }
+    );
+  }
+
+  if (eventName === 'OnTableToggleCellChanged') {
+    const { component, column, rowId, row } = options;
+    _self.setState(
+      {
+        currentState: {
+          ..._self.state.currentState,
+          components: {
+            ..._self.state.currentState.components,
+            [component.name]: {
+              ..._self.state.currentState.components[component.name],
+              selectedRow: row,
+              selectedRowId: rowId,
+            },
+          },
+        },
+      },
+      async () => {
+        if (column && column.events) {
+          for (const event of column.events) {
+            if (event.actionId) {
+              // the event param uses a hacky workaround for using same format used by event manager ( multiple handlers )
+              await executeAction(_self, { ...event, ...event.options }, mode);
+            }
+          }
         } else {
           console.log('No action is associated with this event');
         }
@@ -267,6 +341,8 @@ export async function onEvent(_ref, eventName, options, mode = 'edit') {
       'onChange',
       'onSelectionChange',
       'onSelect',
+      'onClick',
+      'onFileSelected',
     ].includes(eventName)
   ) {
     const { component } = options;
@@ -364,7 +440,7 @@ export function previewQuery(_ref, query) {
   });
 }
 
-export function runQuery(_ref, queryId, queryName, confirmed = undefined) {
+export function runQuery(_ref, queryId, queryName, confirmed = undefined, mode) {
   const query = _ref.state.app.data_queries.find((query) => query.id === queryId);
   let dataQuery = {};
 
@@ -451,6 +527,34 @@ export function runQuery(_ref, queryId, queryName, confirmed = undefined) {
 
           if (dataQuery.options.enableTransformation) {
             finalData = runTransformation(_self, rawData, dataQuery.options.transformation, dataQuery);
+            if (finalData.status === 'failed') {
+              return _self.setState(
+                {
+                  currentState: {
+                    ..._self.state.currentState,
+                    queries: {
+                      ..._self.state.currentState.queries,
+                      [queryName]: {
+                        ..._self.state.currentState.queries[queryName],
+                        isLoading: false,
+                      },
+                    },
+                    errors: {
+                      ..._self.state.currentState.errors,
+                      [queryName]: {
+                        type: 'transformations',
+                        data: finalData,
+                        options: options,
+                      },
+                    },
+                  },
+                },
+                () => {
+                  resolve();
+                  onEvent(_self, 'onDataQueryFailure', { definition: { events: dataQuery.options.events } });
+                }
+              );
+            }
           }
 
           if (dataQuery.options.showSuccessNotification) {
@@ -485,7 +589,7 @@ export function runQuery(_ref, queryId, queryName, confirmed = undefined) {
             },
             () => {
               resolve();
-              onEvent(_self, 'onDataQuerySuccess', { definition: { events: dataQuery.options.events } });
+              onEvent(_self, 'onDataQuerySuccess', { definition: { events: dataQuery.options.events } }, mode);
             }
           );
         })

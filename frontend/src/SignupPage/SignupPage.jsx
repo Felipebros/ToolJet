@@ -2,6 +2,7 @@ import React from 'react';
 import { authenticationService } from '@/_services';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
+import { validateEmail } from "../_helpers/utils";
 
 class SignupPage extends React.Component {
   constructor(props) {
@@ -23,6 +24,16 @@ class SignupPage extends React.Component {
 
     const { email } = this.state;
 
+    if(!validateEmail(email)) {
+      toast.error('Invalid email', {
+        toastId: 'toast-login-auth-error',
+        hideProgressBar: true,
+        position: 'top-center',
+      });
+      this.setState({ isLoading: false });
+      return;
+    }
+
     authenticationService.signup(email).then(
       () => {
         // eslint-disable-next-line no-unused-vars
@@ -43,7 +54,7 @@ class SignupPage extends React.Component {
       <div className="page page-center">
         <div className="container-tight py-2">
           <div className="text-center mb-4">
-            <a href=".">
+            <a href="." className="navbar-brand-autodark">
               <img src="/assets/images/logo-text.svg" height="30" alt="" />
             </a>
           </div>

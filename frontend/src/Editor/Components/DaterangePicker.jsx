@@ -7,7 +7,6 @@ import { resolveReferences, resolveWidgetFieldValue } from '@/_helpers/utils';
 
 export const DaterangePicker = function DaterangePicker({
   id,
-  width,
   height,
   component,
   onComponentClick,
@@ -58,11 +57,11 @@ export const DaterangePicker = function DaterangePicker({
 
   return (
     <div
-      className="px-1"
-      style={{ width, height, display: parsedWidgetVisibility ? '' : 'none' }}
+      className="daterange-picker-widget p-0"
+      style={{ height, display: parsedWidgetVisibility ? '' : 'none' }}
       onClick={(event) => {
         event.stopPropagation();
-        onComponentClick(id, component);
+        onComponentClick(id, component, event);
       }}
     >
       <DateRangePicker

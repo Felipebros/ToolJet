@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import config from 'config';
+import { validateEmail } from "../_helpers/utils"
 
 class ForgotPassword extends React.Component {
   constructor(props) {
@@ -17,14 +18,18 @@ class ForgotPassword extends React.Component {
 
   handleChange = (event) => {
     this.setState({ [event.target.name]: event.target.value });
-    if (event.target.value == '') {
+    if (event.target.value === '') {
       this.setState({ isEmailFound: false, buttonClicked: false });
     }
   };
 
   handleClick = (event) => {
-    this.setState({ buttonClicked: true });
     event.preventDefault();
+
+    if(!validateEmail(this.state.email)) {
+      toast.error('Invalid email', { toastId: 'toast-forgot-password-email-error' });
+      return
+    }
 
     fetch(`${config.apiUrl}/forgot_password`, {
       method: 'POST',
@@ -38,6 +43,7 @@ class ForgotPassword extends React.Component {
           this.setState({ isEmailFound: true });
           return res.json();
         } else {
+          this.setState({ buttonClicked: true });
           this.setState({ isEmailFound: false });
         }
       })
@@ -58,7 +64,7 @@ class ForgotPassword extends React.Component {
       <div className="page page-center">
         <div className="container-tight py-2">
           <div className="text-center mb-4">
-            <a href=".">
+            <a href="." className="navbar-brand-autodark">
               <img src="/assets/images/logo-text.svg" height="30" alt="" />
             </a>
           </div>
@@ -86,7 +92,7 @@ class ForgotPassword extends React.Component {
                   onClick={this.handleClick}
                   disabled={!this.state.email}
                 >
-                  Submit
+                  Reset Password
                 </button>
               </div>
             </div>

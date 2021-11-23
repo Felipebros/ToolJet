@@ -6,9 +6,9 @@ class Switch extends React.Component {
     const { on, onClick, onChange, disabledState, color } = this.props;
 
     return (
-      <label className="form-check form-switch form-check-inline">
+      <label className="form-switch form-check-inline">
         <input
-          style={{backgroundColor: on ? `${color}` : 'white'}}
+          style={{ backgroundColor: on ? `${color}` : 'white', marginTop: '0px' }}
           disabled={disabledState}
           className="form-check-input"
           type="checkbox"
@@ -23,7 +23,6 @@ class Switch extends React.Component {
 
 export const ToggleSwitch = ({
   id,
-  width,
   height,
   component,
   onComponentClick,
@@ -37,9 +36,9 @@ export const ToggleSwitch = ({
   const toggleSwitchColorProperty = component.definition.styles.toggleSwitchColor;
   const toggleSwitchColor = toggleSwitchColorProperty ? toggleSwitchColorProperty.value : '#3c92dc';
   const textColor = textColorProperty ? textColorProperty.value : '#000';
-  const widgetVisibility = component.definition.styles?.visibility?.value ?? true;
-  const disabledState = component.definition.styles?.disabledState?.value ?? false;
-
+  const widgetVisibility = component.definition.styles.visibility?.value ?? true;
+  const disabledState = component.definition.styles.disabledState?.value ?? false;
+  
   const parsedDisabledState =
     typeof disabledState !== 'boolean' ? resolveWidgetFieldValue(disabledState, currentState) : disabledState;
 
@@ -61,18 +60,24 @@ export const ToggleSwitch = ({
 
   return (
     <div
-      className="row  py-1"
-      style={{ width, height, display: parsedWidgetVisibility ? '' : 'none' }}
+      className="row py-1"
+      style={{ height, display: parsedWidgetVisibility ? '' : 'none' }}
       onClick={(event) => {
         event.stopPropagation();
-        onComponentClick(id, component);
+        onComponentClick(id, component, event);
       }}
     >
-      <span className="form-check-label form-check-label col-auto" style={{ color: textColor }}>
+      <span className="form-check-label form-check-label col-auto my-auto" style={{ color: textColor }}>
         {label}
       </span>
-      <div className="col">
-        <Switch disabledState={parsedDisabledState} on={on} onClick={toggle} onChange={toggleValue} color={toggleSwitchColor} />
+      <div className="col px-1 py-0 mt-0">
+        <Switch
+          disabledState={parsedDisabledState}
+          on={on}
+          onClick={toggle}
+          onChange={toggleValue}
+          color={toggleSwitchColor}
+        />
       </div>
     </div>
   );

@@ -21,8 +21,10 @@ class ResetPassword extends React.Component {
 
   handleClick = (event) => {
     event.preventDefault();
-    const { password, password_confirmation } = this.state;
-    if (password !== password_confirmation) {
+    const { token, password, password_confirmation } = this.state;
+    if(!token || !password || !password_confirmation) {
+      toast.error("Please fill all field(s)");
+    } else if (password !== password_confirmation) {
       toast.error("Password don't match");
       this.setState({
         password: '',
@@ -55,7 +57,7 @@ class ResetPassword extends React.Component {
       <div className="page page-center">
         <div className="container-tight py-2">
           <div className="text-center mb-4">
-            <a href=".">
+            <a href="." className="navbar-brand-autodark">
               <img src="/assets/images/logo-text.svg" height="30" alt="" />
             </a>
           </div>
